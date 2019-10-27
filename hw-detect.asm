@@ -16,14 +16,14 @@ OSROM  = $fff7
     org $2000
 
 dlist
-:5	.by $70
-	.by $47
-	.word title
+:5  .by $70
+    .by $47
+    .word title
     .by $10
     .by $42
     .word author
 :3  .by $70
-	.by $42
+    .by $42
     .word processor
     .by $0
     .by $42
@@ -40,8 +40,8 @@ dlist
 :6  .by $70
     .by $42
     .word options
-	.by $41
-	.word dlist
+    .by $41
+    .word dlist
 
 title
     dta d' #$ HARDWARE DETECT '
@@ -194,7 +194,7 @@ tv_end
 
 ; Detect the Sound
     jsr stereo
-	bmi soundstereo
+    bmi soundstereo
     string sound1,sounddetect,5
     jmp sound_end
 soundstereo
@@ -226,29 +226,29 @@ selftest
 ; Stereo pokey detection routine
 stereo	
     sei
-	inc $d40e
-	lda #$03
-	sta $d21f
-	sta $d210
-	ldx #$00
-	stx $d211
-	inx
-	stx $d21e
-	ldx:rne $d40b
-	stx $d219
+    inc $d40e
+    lda #$03
+    sta $d21f
+    sta $d210
+    ldx #$00
+    stx $d211
+    inx
+    stx $d21e
+    ldx:rne $d40b
+    stx $d219
 loop	
     ldx $d40b
-	bmi stop
-	lda #$01
-	bit $d20e
-	bne loop
+    bmi stop
+    lda #$01
+    bit $d20e
+    bne loop
 stop	
     lda $10
-	sta $d20e
-	dec $d40e
-	cli
-	txa
-	rts
+    sta $d20e
+    dec $d40e
+    cli
+    txa
+    rts
 
     run begin
 
@@ -265,6 +265,4 @@ copybytes
 ; Memory area for the font
     org $4000
 font
-	ins 'letter.fnt'
-
-phaeron
+    ins 'letter.fnt'
