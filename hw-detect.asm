@@ -10,7 +10,8 @@ PORTB  = $d301
 BASROM = $a8e2
 PAL    = $d014
 CONSOL = $d01f         	
-COLDSV = $e477          	
+COLDSV = $e477
+SELFTST= $e471 
 OSROM  = $fff7
 
     org $2000
@@ -71,14 +72,14 @@ sounddetect
     dta d'                     '
 
 options
-    .by $44
+    .by $0,$0,$44
     dta d'Start'*
     .by $45
-    dta d'Reboot      '
+    dta d'Reboot  '
     .by $44
     dta d'Select'*
     .by $45
-    dta d'Run Self TEST'
+    dta d'Run Self TEST  '
 
 osver1
     dta d'XL/XE OS Rev.1 '
@@ -201,8 +202,6 @@ soundstereo
     string sound2,sounddetect,5
 sound_end
 
-
-
 ; Key console
 keyconsole
     lda CONSOL
@@ -218,10 +217,8 @@ reboot
 
 ; Selt Test
 selftest
-    mva #$7d PORTB
-    mva #$1 COLDST
     mva #$e0 CHBAS
-    jmp $5000
+    jmp SELFTST
 
 ; Stereo pokey detection routine
 stereo	
@@ -263,6 +260,6 @@ copybytes
 .endm
 
 ; Memory area for the font
-    org $4000
+    org +1024
 font
     ins 'letter.fnt'
