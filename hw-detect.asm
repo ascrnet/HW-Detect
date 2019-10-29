@@ -15,6 +15,7 @@ SELFTST= $e471
 OSROM  = $fff7
 
     org $2000
+    opt c+
 
 dlist
 :5  .by $70
@@ -52,24 +53,27 @@ author
     dta d'by AsCrNet, 2019'*
     .by $43
 :12 .by $41
+
 processor
-    dta d'        Processor : 6502C               '
+    dta d'        Processor : '
+processordetect
+    dta d'                    '
 osversion
     dta d'           OS ROM : '
 osdetect
-    dta d'                     '
+    dta d'                    '
 basversion
     dta d'        Basic ROM : '
 basdetect
-    dta d'                     '
+    dta d'                    '
 tvversion
     dta d'        TV System : '
 tvdetect
-    dta d'                     '
+    dta d'                    '
 soundversion
     dta d'            Sound : '
 sounddetect
-    dta d'                     '
+    dta d'                    '
 
 options
     .by $0,$0,$44
@@ -81,6 +85,12 @@ options
     .by $45
     dta d'Run Self TEST  '
 
+cpu1
+    dta d'NMOS 6502/6502C'
+cpu2
+    dta d'CMOS 65c02'
+cpu3
+    dta d'CMOS 65c816'
 osver1
     dta d'XL/XE OS Rev.1 '
 osver2
@@ -125,6 +135,26 @@ begin
     mva #30 COLOR0
     mva #$c COLOR1
     mva #$a0 COLOR4
+
+; Delect the CPU
+detect_cpu
+    lda #$99
+    clc
+    sed
+    adc #$01
+    cld
+    beq cpu_cmos
+    string cpu1,processordetect,14
+    jmp os_detect
+cpu_cmos
+    lda #0
+    rep #%00000010	
+    bne cpu_c816
+cpu_c02
+    string cpu2,processordetect,9
+    jmp os_detect
+cpu_c816
+    string cpu3,processordetect,10
 
 ; Detect the OS ROM
 os_detect
