@@ -1,3 +1,6 @@
+ATRACT = $4d
+SDMCTL = $22f      	
+VDSLST = $200
 SDLSTL = $230
 COLDST = $244          	
 CHBAS  = $2f4
@@ -6,27 +9,37 @@ COLOR1 = $2c5
 COLOR2 = $2c6
 COLOR3 = $2c7
 COLOR4 = $2c8
+COLPF0 = $d016
+COLPF1 = $d017
 PORTB  = $d301
+WSYNC  = $d40a
+VCOUNT = $d40b          	
 BASROM = $a8e2
 PAL    = $d014
 CONSOL = $d01f         	
 COLDSV = $e477
 SELFTST= $e471 
 OSROM  = $fff7
+@TAB_MEM_BANKS = $1
 
     org $2000
     opt c+
 
 dlist
-:5  .by $70
+:3  .by $70
     .by $47
     .word title
+    .by $46
+    .word subtitle
     .by $10
     .by $42
     .word author
 :3  .by $70
     .by $42
     .word processor
+    .by $0
+    .by $42
+    .word memory
     .by $0
     .by $42
     .word osversion
@@ -46,7 +59,9 @@ dlist
     .word dlist
 
 title
-    dta d' #$ HARDWARE DETECT '
+    dta d' #$ HARDWARE-DETECT '
+subtitle
+    dta d'  ATARI XL/XE/XEGS  '
 author
 :10 .by $41
     .by $42
@@ -55,8 +70,12 @@ author
 :12 .by $41
 
 processor
-    dta d'        Processor : '
+    dta d'        Processor : ' 
 processordetect
+    dta d'                    '
+memory
+    dta d'              RAM : '
+memorydetect
     dta d'                    '
 osversion
     dta d'           OS ROM : '
@@ -91,6 +110,20 @@ cpu2
     dta d'CMOS 65c02'
 cpu3
     dta d'CMOS 65c816'
+bank0
+    dta d'64 KB'
+bank4
+    dta d'128 KB'
+bank15
+    dta d'256 KB'
+bank16
+    dta d'320 KB'
+bank32
+    dta d'576 KB'
+bank64
+    dta d'1088 KB'
+bank128
+    dta d'2112 KB'
 osver1
     dta d'XL/XE OS Rev.1 '
 osver2
@@ -106,7 +139,7 @@ osver11
 osver59
     dta d'XL/XE OS Rev.3B'
 osother
-    dta d'Unknown !!!!   '
+    dta d'Unknown !!!!'
 
 basic_a
     dta d'Atari Basic Rev.A'
@@ -114,8 +147,8 @@ basic_b
     dta d'Atari Basic Rev.B'
 basic_c
     dta d'Atari Basic Rev.C'
-basic_off
-    dta d'Disabled !!!!    '
+basic_other
+    dta d'Unknown !!!!'
 
 tvstandard1
     dta d'NTSC'
@@ -132,10 +165,8 @@ sound2
 begin
     mwa #dlist SDLSTL
     mva #>font CHBAS
-    mva #30 COLOR0
-    mva #$c COLOR1
-    mva #$a0 COLOR4
-
+    mva #$d COLOR1
+ 
 ; Delect the CPU
 detect_cpu
     lda #$99
@@ -145,16 +176,57 @@ detect_cpu
     cld
     beq cpu_cmos
     string cpu1,processordetect,14
-    jmp os_detect
+    jmp ram_detect
 cpu_cmos
     lda #0
     rep #%00000010	
     bne cpu_c816
 cpu_c02
     string cpu2,processordetect,9
-    jmp os_detect
+    jmp ram_detect
 cpu_c816
     string cpu3,processordetect,10
+
+; Detect the RAM
+ram_detect
+    jsr @MEM_DETECT
+	sta banks
+    cpw banks #0
+    beq ram_0
+    cpw banks #4
+    beq ram_4
+    cpw banks #15
+    beq ram_15
+    cpw banks #16
+    beq ram_16
+    cpw banks #32
+    beq ram_32
+    cpw banks #64
+    beq ram_64
+    cpw banks #128
+    beq ram_128
+    jmp end_bank
+ram_0
+    string bank0,memorydetect,4
+    jmp end_bank
+ram_4
+    string bank4,memorydetect,5
+    jmp end_bank
+ram_15
+    string bank15,memorydetect,5
+    jmp end_bank
+ram_16
+    string bank16,memorydetect,5
+    jmp end_bank
+ram_32
+    string bank32,memorydetect,5
+    jmp end_bank
+ram_64
+    string bank64,memorydetect,6
+    jmp end_bank
+ram_128
+    string bank128,memorydetect,6
+end_bank 
 
 ; Detect the OS ROM
 os_detect
@@ -171,7 +243,7 @@ os_detect
     beq os_v10
     cmp #11
     beq os_v11
-    string osother,osdetect,14
+    string osother,osdetect,11
     jmp os_end
 os_v1
     string osver1,osdetect,14
@@ -190,10 +262,11 @@ os_v10
     jmp os_end
 os_v11
     string osver11,osdetect,14
-    jmp os_end
 os_end
 
 ; Detect the Basic ROM
+    lda #$fd
+    sta PORTB
     lda BASROM
     cmp #162
     beq bas_a
@@ -201,14 +274,14 @@ os_end
     beq bas_b
     cmp #234
     beq bas_c
-    string basic_off,basdetect,16
+    string basic_other,basdetect,11
     jmp bas_end
 bas_a
     string basic_a,basdetect,16
-    jmp os_end
+    jmp bas_end
 bas_b
     string basic_b,basdetect,16
-    jmp os_end
+    jmp bas_end
 bas_c
     string basic_c,basdetect,16
 bas_end
@@ -217,9 +290,11 @@ bas_end
     lda PAL
     and #$e
     bne tvs
+    mva #$90 COLOR4
     string tvstandard2,tvdetect,3
     jmp tv_end
 tvs
+    mva #$a0 COLOR4
     string tvstandard1,tvdetect,3
 tv_end
 
@@ -234,6 +309,13 @@ sound_end
 
 ; Key console
 keyconsole
+    mva #0 ATRACT
+    lda VCOUNT
+    clc
+    sub 20
+    sta VCOUNT
+    sta COLPF0
+;
     lda CONSOL
     cmp #6
     beq reboot
@@ -279,6 +361,10 @@ stop
 
     run begin
 
+banks	
+    dta a(0)
+
+
 ; Macro to copy texts on screen
 .macro string origin,destination,quantity
     ldx #:quantity
@@ -289,7 +375,9 @@ copybytes
     bpl copybytes
 .endm
 
+    icl 'mem_detect.asm'
+
 ; Memory area for the font
-    org +1024
+    org $4000
 font
     ins 'letter.fnt'
