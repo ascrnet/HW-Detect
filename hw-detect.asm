@@ -20,7 +20,7 @@ CONSOL = $d01f
 COLDSV = $e477
 SELFTST= $e471 
 OSROM  = $fff7
-@TAB_MEM_BANKS = $1
+@TAB_MEM_BANKS = $600
 
     org $2000
     opt c+
