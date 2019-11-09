@@ -1,4 +1,6 @@
+RTCLOK = $14
 ATRACT = $4d
+PALNTS = $62          	
 SDMCTL = $22f      	
 VDSLST = $200
 SDLSTL = $230
@@ -20,7 +22,9 @@ CONSOL = $d01f
 COLDSV = $e477
 SELFTST= $e471 
 OSROM  = $fff7
+
 @TAB_MEM_BANKS = $600
+@ANTIC_DETECT = $650
 
     org $2000
     opt c+
@@ -86,9 +90,11 @@ basversion
 basdetect
     dta d'                    '
 tvversion
-    dta d'        TV System : '
-tvdetect
-    dta d'                    '
+    dta d'        TV System : GTIA='
+tvgtia
+    dta d'     ANTIC='
+tvantic
+    dta d'    '
 soundversion
     dta d'            Sound : '
 sounddetect
@@ -111,15 +117,15 @@ cpu2
 cpu3
     dta d'CMOS 65c816'
 bank0
-    dta d'64 KB'
+    dta d'64 KB Atari'
 bank4
-    dta d'128 KB'
+    dta d'128 KB Atari'
 bank15
-    dta d'256 KB'
+    dta d'256 KB Rambo'
 bank16
-    dta d'320 KB'
+    dta d'320 KB Rambo/Compy'
 bank32
-    dta d'576 KB'
+    dta d'576 KB Rambo/Compy'
 bank64
     dta d'1088 KB'
 bank128
@@ -138,6 +144,10 @@ osver11
     dta d'XL/XE OS Rev.11'  
 osver59
     dta d'XL/XE OS Rev.3B'
+osver64
+    dta d'QMEG+OS 4.04'
+osver253
+    dta d'QMEG+OS RC01'
 osother
     dta d'Unknown !!!!'
 
@@ -207,19 +217,19 @@ ram_detect
     beq ram_128
     jmp end_bank
 ram_0
-    string bank0,memorydetect,4
+    string bank0,memorydetect,10
     jmp end_bank
 ram_4
-    string bank4,memorydetect,5
+    string bank4,memorydetect,11
     jmp end_bank
 ram_15
-    string bank15,memorydetect,5
+    string bank15,memorydetect,11
     jmp end_bank
 ram_16
-    string bank16,memorydetect,5
+    string bank16,memorydetect,17
     jmp end_bank
 ram_32
-    string bank32,memorydetect,5
+    string bank32,memorydetect,17
     jmp end_bank
 ram_64
     string bank64,memorydetect,6
@@ -243,6 +253,12 @@ os_detect
     beq os_v10
     cmp #11
     beq os_v11
+    cmp #59
+    beq os_v59
+    cmp #64
+    beq os_v64
+    cmp #253
+    beq os_v253
     string osother,osdetect,11
     jmp os_end
 os_v1
@@ -262,6 +278,15 @@ os_v10
     jmp os_end
 os_v11
     string osver11,osdetect,14
+    jmp os_end
+os_v59
+    string osver59,osdetect,14
+    jmp os_end
+os_v64
+    string osver64,osdetect,11
+    jmp os_end
+os_v253
+    string osver253,osdetect,11
 os_end
 
 ; Detect the Basic ROM
@@ -287,16 +312,27 @@ bas_c
 bas_end
 
 ; Detect the tv standard
-    lda PAL
-    and #$e
+    lda PALNTS
+    cmp #1
     bne tvs
     mva #$90 COLOR4
-    string tvstandard2,tvdetect,3
+    string tvstandard2,tvgtia,3
     jmp tv_end
 tvs
     mva #$a0 COLOR4
-    string tvstandard1,tvdetect,3
+    string tvstandard1,tvgtia,3
 tv_end
+
+; Detect Antic
+    jsr @ANTIC
+    lda @ANTIC_DETECT
+    cmp #1
+    bne antic_pal
+    string tvstandard1,tvantic,3
+    jmp antic_end
+antic_pal
+    string tvstandard2,tvantic,3
+antic_end
 
 ; Detect the Sound
     jsr stereo
@@ -375,6 +411,7 @@ copybytes
     bpl copybytes
 .endm
 
+    icl 'antic_detect.asm'
     icl 'mem_detect.asm'
 
 ; Memory area for the font
