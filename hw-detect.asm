@@ -25,6 +25,8 @@ OSROM  = $fff7
 
 @TAB_MEM_BANKS = $600
 @ANTIC_DETECT = $650
+A600 = $651
+A600KB = $4000
 
     org $2000
     opt c+
@@ -117,6 +119,8 @@ cpu2
 cpu3
     dta d'CMOS 65c816'
 bank0
+    dta d'16 KB Atari'
+bank1
     dta d'64 KB Atari'
 bank4
     dta d'128 KB Atari'
@@ -131,17 +135,17 @@ bank64
 bank128
     dta d'2112 KB'
 osver1
-    dta d'XL/XE OS Rev.1 '
+    dta d'600XL OS Rev.1'
 osver2
-    dta d'XL/XE OS Rev.2 '
+    dta d'800XL OS Rev.2'
 osver3
-    dta d'XL/XE OS Rev.3 '
+    dta d'XL/XE OS Rev.3'
 osver4
-    dta d'XL/XE/XEGS OS Rev.4'  
+    dta d'XEGS OS Rev.4'  
 osver10
-    dta d'XL/XE OS Rev.10'
+    dta d'1200XL OS Rev.A'
 osver11
-    dta d'XL/XE OS Rev.11'  
+    dta d'1200XL OS Rev.B'  
 osver59
     dta d'XL/XE OS Rev.3B'
 osver64
@@ -176,6 +180,7 @@ begin
     mwa #dlist SDLSTL
     mva #>font CHBAS
     mva #$d COLOR1
+    mva #0 A600
  
 ; Delect the CPU
 detect_cpu
@@ -217,7 +222,7 @@ ram_detect
     beq ram_128
     jmp end_bank
 ram_0
-    string bank0,memorydetect,10
+    string bank1,memorydetect,10
     jmp end_bank
 ram_4
     string bank4,memorydetect,11
@@ -242,36 +247,55 @@ end_bank
 os_detect
     lda OSROM
     cmp #1
-    beq os_v1
+    bne os_other1
+    jmp os_v1
+os_other1
     cmp #2
-    beq os_v2
+    bne os_other2
+    jmp os_v2
+os_other2
     cmp #3
-    beq os_v3
+    bne os_other3
+    jmp os_v3
+os_other3
     cmp #4
-    beq os_v4
+    bne os_other4
+    jmp os_v4
+os_other4
     cmp #10
-    beq os_v10
+    bne os_other5
+    jmp os_v10
+os_other5
     cmp #11
-    beq os_v11
+    bne os_other6
+    jmp os_v11
+os_other6
     cmp #59
-    beq os_v59
+    bne os_v59
+os_other7
     cmp #64
-    beq os_v64
+    bne os_other8
+    jmp os_v64
+os_other8
     cmp #253
-    beq os_v253
+    bne os_other99
+    jmp os_v253
+os_other99    
     string osother,osdetect,11
     jmp os_end
 os_v1
-    string osver1,osdetect,14
+    string osver1,osdetect,13
+    mva #1 A600
+    mva #$a A600KB
     jmp os_end
 os_v2
-    string osver2,osdetect,14
+    string osver2,osdetect,13
     jmp os_end   
 os_v3
-    string osver3,osdetect,14
+    string osver3,osdetect,13
     jmp os_end  
 os_v4
-    string osver4,osdetect,18
+    string osver4,osdetect,12
     jmp os_end  
 os_v10
     string osver10,osdetect,14
@@ -289,7 +313,22 @@ os_v253
     string osver253,osdetect,11
 os_end
 
+; Detect 600XL
+d600xl
+    lda A600
+    cmp #1
+    beq d600_ram
+    jmp bas_rom
+d600_ram
+    lda A600KB
+    cmp #$a
+    bne d600_16k
+    jmp bas_rom
+d600_16k
+    string bank0,memorydetect,10
+
 ; Detect the Basic ROM
+bas_rom
     lda #$fd
     sta PORTB
     lda BASROM
@@ -357,6 +396,8 @@ keyconsole
     beq reboot
     cmp #5
     beq selftest
+;    cmp #3
+;   beq rungame
     jmp keyconsole
 
 ; Reboot
@@ -367,6 +408,13 @@ reboot
 selftest
     mva #$e0 CHBAS
     jmp SELFTST
+
+;rungame
+;    lda #$ff
+;   sta $8
+;    sta PORTB
+;   mva #$ff $26D
+;    jmp COLDSV
 
 ; Stereo pokey detection routine
 stereo	
@@ -415,6 +463,6 @@ copybytes
     icl 'mem_detect.asm'
 
 ; Memory area for the font
-    org $4000
+    org $3000
 font
     ins 'letter.fnt'

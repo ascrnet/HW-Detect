@@ -3,24 +3,22 @@
 
 .proc @ANTIC
 
-max	.byte 0
-
 antic_loop1
 	lda vcount
 	cmp #100
 	bcc antic_loop1 //Wait till scanline 200
-	sta max
+	sta scanline
 antic_loop2
 	lda vcount
 	cmp #10
 	bmi antic_loop2_fin
-	cmp max
+	cmp scanline
 	bmi antic_loop2
-	sta max
+	sta scanline
 	bpl antic_loop2
 antic_loop2_fin	
 	ldx #$00
-	lda max
+	lda scanline
 	cmp #135
 	bmi ntsc
 	inx
@@ -33,6 +31,9 @@ detect
 	mva #0 @antic_detect
 end_antic
 	rts
+
+scanline
+	.byte 0
 	
 .endp
 
