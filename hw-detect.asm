@@ -25,11 +25,14 @@ OSROM  = $fff7
 
 @TAB_MEM_BANKS = $600
 @ANTIC_DETECT = $650
-A600 = $651
+A600   = $651
+A1200  = $652
 A600KB = $4000
 
     org $2000
     opt c+
+;    opt f+
+;    opt h-
 
 dlist
 :3  .by $70
@@ -69,11 +72,15 @@ title
 subtitle
     dta d'  ATARI XL/XE/XEGS  '
 author
-:10 .by $41
+:7  .by $41
     .by $42
     dta d'by AsCrNet, 2019'*
     .by $43
-:12 .by $41
+    .by $41
+    .by $42
+    dta d'V1.4'*
+    .by $43
+:8  .by $41
 
 processor
     dta d'        Processor : ' 
@@ -137,7 +144,7 @@ bank128
 osver1
     dta d'600XL OS Rev.1'
 osver2
-    dta d'800XL OS Rev.2'
+    dta d'XL/XE OS Rev.2'
 osver3
     dta d'XL/XE OS Rev.3'
 osver4
@@ -163,16 +170,18 @@ basic_c
     dta d'Atari Basic Rev.C'
 basic_other
     dta d'Unknown !!!!'
-
+basic_a1200
+    dta d'Without cartridge'
 tvstandard1
     dta d'NTSC'
 tvstandard2
     dta d'PAL '
-
 sound1
     dta d'Mono  '
 sound2
     dta d'Stereo'
+bas1200xl
+    dta d'  Basic Cartridge : '
 
 
 ; Program start
@@ -181,6 +190,7 @@ begin
     mva #>font CHBAS
     mva #$d COLOR1
     mva #0 A600
+    mva #0 A1200
  
 ; Delect the CPU
 detect_cpu
@@ -271,7 +281,8 @@ os_other5
     jmp os_v11
 os_other6
     cmp #59
-    bne os_v59
+    bne os_other7
+    jmp os_v59
 os_other7
     cmp #64
     bne os_other8
@@ -299,9 +310,11 @@ os_v4
     jmp os_end  
 os_v10
     string osver10,osdetect,14
+    mva #1 A1200
     jmp os_end
 os_v11
     string osver11,osdetect,14
+    mva #1 A1200
     jmp os_end
 os_v59
     string osver59,osdetect,14
@@ -312,6 +325,12 @@ os_v64
 os_v253
     string osver253,osdetect,11
 os_end
+
+;Detect 1200XL
+    lda A1200
+    cmp #0
+    beq d600xl
+    string bas1200xl,basversion,19
 
 ; Detect 600XL
 d600xl
