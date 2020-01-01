@@ -4,38 +4,57 @@ PALNTS = $62
 SDMCTL = $22f      	
 VDSLST = $200
 SDLSTL = $230
-COLDST = $244          	
+COLDST = $244
+PADDL0 = $270
+PADDL1 = $271
+PADDL2 = $272
+PADDL3 = $273
+STICK0 = $278
+STICK1 = $279
 CHBAS  = $2f4
 COLOR0 = $2c4
 COLOR1 = $2c5
 COLOR2 = $2c6
 COLOR3 = $2c7
 COLOR4 = $2c8
+STRIG0 = $d010
+STRIG1 = $d011
 COLPF0 = $d016
 COLPF1 = $d017
+AUDF1  = $d200
+AUDC1  = $d201
+AUDF2  = $d202
+AUDC2  = $d203
+AUDF3  = $d204
+AUDC3  = $d205
+AUDF4  = $d206
+AUDC4  = $d207
+AUDCTL = $d208
 PORTB  = $d301
 WSYNC  = $d40a
-VCOUNT = $d40b          	
+VCOUNT = $d40b
+NMIEN  = $d40e         	
 BASROM = $a8e2
 PAL    = $d014
-CONSOL = $d01f         	
+CONSOL = $d01f  
+SETVBV = $e45C
+XITVBV = $e462       	
 COLDSV = $e477
 SELFTST= $e471 
 OSROM  = $fff7
 
 @TAB_MEM_BANKS = $600
 @ANTIC_DETECT = $650
-A600   = $651
 A1200  = $652
 A600KB = $4000
 
     org $2000
     opt c+
-;    opt f+
-;    opt h-
+;   opt f+h-
 
 dlist
-:3  .by $70
+    .by $70
+    .by $70+$80
     .by $47
     .word title
     .by $46
@@ -43,7 +62,7 @@ dlist
     .by $10
     .by $42
     .word author
-:3  .by $70
+:2  .by $70
     .by $42
     .word processor
     .by $0
@@ -61,7 +80,14 @@ dlist
     .by $0
     .by $42
     .word soundversion
-:6  .by $70
+:4  .by $70
+    .by $42
+    .word tjoy1
+    .by $42
+    .word tjoy2
+    .by $42
+    .word tjoy3
+:4  .by $70
     .by $42
     .word options
     .by $41
@@ -74,11 +100,11 @@ subtitle
 author
 :7  .by $41
     .by $42
-    dta d'by AsCrNet, 2019'*
+    dta d'by AsCrNet, 2020'*
     .by $43
     .by $41
     .by $42
-    dta d'V1.4'*
+    dta d'V1.5'*
     .by $43
 :8  .by $41
 
@@ -108,6 +134,13 @@ soundversion
     dta d'            Sound : '
 sounddetect
     dta d'                    '
+
+tjoy1
+    dta d'   ',$46,d'           ',$4b,d'  Test  '*,$4c,d'     ',$46,d'            '       
+tjoy2
+    dta d'  ',$48,$4a,$49,d' 1 2 3    ',$4b,d'Joystick'*,$4c,d'    ',$48,$4a,$49,d' 1 2 3   '
+tjoy3
+    dta d'   ',$47,d'           ',$4b,d'  1 & 2 '*,$4c,d'     ',$47,d'            '
 
 options
     .by $0,$0,$44
@@ -142,7 +175,7 @@ bank64
 bank128
     dta d'2112 KB'
 osver1
-    dta d'600XL OS Rev.1'
+    dta d'XL OS Rev.1'
 osver2
     dta d'XL/XE OS Rev.2'
 osver3
@@ -183,13 +216,13 @@ sound2
 bas1200xl
     dta d'  Basic Cartridge : '
 
-
 ; Program start
 begin
+    mva #0 AUDCTL
     mwa #dlist SDLSTL
+    mwa #dli VDSLST
     mva #>font CHBAS
     mva #$d COLOR1
-    mva #0 A600
     mva #0 A1200
  
 ; Delect the CPU
@@ -201,18 +234,28 @@ detect_cpu
     cld
     beq cpu_cmos
     string cpu1,processordetect,14
-    jmp ram_detect
+    jmp ram16
 cpu_cmos
     lda #0
     rep #%00000010	
     bne cpu_c816
 cpu_c02
     string cpu2,processordetect,9
-    jmp ram_detect
+    jmp ram16
 cpu_c816
     string cpu3,processordetect,10
 
 ; Detect the RAM
+ram16
+    mva #$a A600KB
+    lda A600KB
+    cmp #$a
+    bne d600_16k
+    jmp ram_detect
+d600_16k
+    string bank0,memorydetect,10
+    jmp end_bank
+
 ram_detect
     jsr @MEM_DETECT
 	sta banks
@@ -295,9 +338,7 @@ os_other99
     string osother,osdetect,11
     jmp os_end
 os_v1
-    string osver1,osdetect,13
-    mva #1 A600
-    mva #$a A600KB
+    string osver1,osdetect,10
     jmp os_end
 os_v2
     string osver2,osdetect,13
@@ -329,22 +370,8 @@ os_end
 ;Detect 1200XL
     lda A1200
     cmp #0
-    beq d600xl
+    beq bas_rom
     string bas1200xl,basversion,19
-
-; Detect 600XL
-d600xl
-    lda A600
-    cmp #1
-    beq d600_ram
-    jmp bas_rom
-d600_ram
-    lda A600KB
-    cmp #$a
-    bne d600_16k
-    jmp bas_rom
-d600_16k
-    string bank0,memorydetect,10
 
 ; Detect the Basic ROM
 bas_rom
@@ -401,23 +428,16 @@ soundstereo
     string sound2,sounddetect,5
 sound_end
 
+
 ; Key console
 keyconsole
     mva #0 ATRACT
-    lda VCOUNT
-    clc
-    sub 20
-    sta VCOUNT
-    sta COLPF0
-;
     lda CONSOL
     cmp #6
     beq reboot
     cmp #5
     beq selftest
-;    cmp #3
-;   beq rungame
-    jmp keyconsole
+    jmp joystick1
 
 ; Reboot
 reboot
@@ -428,12 +448,127 @@ selftest
     mva #$e0 CHBAS
     jmp SELFTST
 
-;rungame
-;    lda #$ff
-;   sta $8
-;    sta PORTB
-;   mva #$ff $26D
-;    jmp COLDSV
+joystick1
+	lda STICK0
+	pha
+p1_right
+	pla
+	pha
+	and #8
+	bne p1_left
+	anima $49,tjoy2+4,AUDC1
+p1_left
+	pla
+	pha
+	and #4
+	bne p1_down
+	anima $48,tjoy2+2,AUDC1
+p1_down
+	pla
+	pha
+	and #2
+	bne p1_up
+	anima $47,tjoy3+3,AUDC1
+p1_up
+	pla
+	pha
+	and #1
+	bne p1_b1
+	anima $46,tjoy1+3,AUDC1
+p1_b1
+	lda STRIG0
+	bne p1_j2b
+	anima $11,tjoy2+6,AUDC2
+p1_j2b
+    lda PADDL0
+    and PADDL1
+    cmp #$e4
+    bne p1_b2
+    jmp joystick2
+p1_b2
+	lda PADDL0
+	cmp #$e4
+	bne p1_b3
+    anima $12,tjoy2+8,AUDC2
+p1_b3
+	lda PADDL1
+	cmp #$e4
+	bne joystick2
+    anima $13,tjoy2+10,AUDC2
+;
+joystick2
+	lda STICK1
+	pha
+p2_right
+	pla
+	pha
+	and #8
+	bne p2_left
+	anima $49,tjoy2+31,AUDC3
+p2_left
+	pla
+	pha
+	and #4
+	bne p2_down
+	anima $48,tjoy2+29,AUDC3
+p2_down
+	pla
+	pha
+	and #2
+	bne p2_up
+	anima $47,tjoy3+30,AUDC3	
+p2_up
+	pla
+	pha
+	and #1
+	bne p2_b1
+	anima $46,tjoy1+30,AUDC3
+p2_b1
+	lda STRIG1
+	bne p2_j2b
+	anima $11,tjoy2+33,AUDC4
+p2_j2b
+    lda PADDL2
+    and PADDL3
+    cmp #$e4
+    bne p2_b2
+    jmp end_joy
+p2_b2
+	lda PADDL2
+	cmp #$e4
+	bne p2_b3
+    anima $12,tjoy2+35,AUDC4
+p2_b3
+	lda PADDL3
+	cmp #$e4
+	bne end_joy
+    anima $13,tjoy2+37,AUDC4
+end_joy
+    jmp keyconsole
+
+; Dli
+dli
+    pha
+    txa
+    pha
+    ldx #12
+    lda #$4f
+    sta WSYNC
+loop_dli
+    sta COLPF0
+    sec
+    sbc #2
+    dex
+    sta WSYNC
+    sta WSYNC
+    bne loop_dli
+    lda #$00
+    sta COLPF0
+    pla
+    tax
+    pla
+    rti
+
 
 ; Stereo pokey detection routine
 stereo	
@@ -467,7 +602,6 @@ stop
 banks	
     dta a(0)
 
-
 ; Macro to copy texts on screen
 .macro string origin,destination,quantity
     ldx #:quantity
@@ -478,10 +612,43 @@ copybytes
     bpl copybytes
 .endm
 
+; Macro que anima el caracter 
+.macro anima
+	mva #:1-128 :2
+	mva #$9b :3
+    pause 3
+	mva #0 :3
+	mva #:1 :2
+.endm
+
+; Macro pause CPU
+.macro pause
+	ift :1 == 0
+	lda:cmp:req 20
+	els
+	lda 20
+	add #:1
+	cmp 20
+	bne *-2
+	eif
+.endm
+
     icl 'antic_detect.asm'
     icl 'mem_detect.asm'
 
 ; Memory area for the font
-    org $3000
+   org $3000
 font
     ins 'letter.fnt'
+
+; ----Cart--------
+;init
+;    rts 
+;
+;   org $BFFA
+;		    
+;    .word begin
+;    .by 0,4
+;    .word init
+
+
