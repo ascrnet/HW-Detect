@@ -7,7 +7,7 @@
             "label": "Compiler Mads",
             "type": "shell",
             "command": "mads",
-            "args": [ "${file}","-o:${fileBasenameNoExtension}.xex","-v"],
+            "args": [ "${file}","-o:${fileBasenameNoExtension}.xex","-v","-l:${fileBasenameNoExtension}.lst"],
             "problemMatcher": []
         },{
             "label": "Run Atari800",

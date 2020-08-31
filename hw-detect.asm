@@ -17,6 +17,7 @@ COLOR1 = $2c5
 COLOR2 = $2c6
 COLOR3 = $2c7
 COLOR4 = $2c8
+BASICF = $3f8
 STRIG0 = $d010
 STRIG1 = $d011
 COLPF0 = $d016
@@ -42,11 +43,15 @@ XITVBV = $e462
 COLDSV = $e477
 SELFTST= $e471 
 OSROM  = $fff7
+OSROM2 = $fff8
 
 @TAB_MEM_BANKS = $600
 @ANTIC_DETECT = $650
 A1200  = $652
+@TIA_DETECT = $653
 A600KB = $4000
+A800KB = $A000
+A800  = $80
 
     org $2000
     opt c+
@@ -89,14 +94,14 @@ dlist
     .word tjoy3
 :4  .by $70
     .by $42
-    .word options
+    .word options1
     .by $41
     .word dlist
 
 title
     dta d' #$ HARDWARE-DETECT '
 subtitle
-    dta d'  ATARI XL/XE/XEGS  '
+    dta d' 400/800/XL/XE/XEGS '
 author
 :7  .by $41
     .by $42
@@ -104,7 +109,7 @@ author
     .by $43
     .by $41
     .by $42
-    dta d'V1.5'*
+    dta d'V1.6'*
     .by $43
 :8  .by $41
 
@@ -115,7 +120,7 @@ processordetect
 memory
     dta d'              RAM : '
 memorydetect
-    dta d'                    '
+    dta d'   KB Atari         '
 osversion
     dta d'           OS ROM : '
 osdetect
@@ -125,7 +130,9 @@ basversion
 basdetect
     dta d'                    '
 tvversion
-    dta d'        TV System : GTIA='
+    dta d'        TV System : '
+tvtype
+    dta d'CTIA='
 tvgtia
     dta d'     ANTIC='
 tvantic
@@ -142,15 +149,25 @@ tjoy2
 tjoy3
     dta d'   ',$47,d'           ',$4b,d'  1 & 2 '*,$4c,d'     ',$47,d'            '
 
-options
-    .by $0,$0,$44
+options1
+    dta d'Start'*
+    .by $4d
+    dta d'Reboot '
+    dta d'Select'*
+    .by $4d
+    dta d'Self-TEST '
+    dta d'OPTION'*
+    .by $4d
+    dta d'Dos'
+
+options2
+    dta d'             '
+    .by $44
     dta d'Start'*
     .by $45
-    dta d'Reboot  '
-    .by $44
-    dta d'Select'*
-    .by $45
-    dta d'Run Self TEST  '
+    dta d'  Reboot'
+    dta d'            '
+
 
 cpu1
     dta d'NMOS 6502/6502C'
@@ -158,10 +175,18 @@ cpu2
     dta d'CMOS 65c02'
 cpu3
     dta d'CMOS 65c816'
-bank0
-    dta d'16 KB Atari'
+kb16
+    dta d'16'
+kb24
+    dta d'24'    
+kb32
+    dta d'32' 
+kb40
+    dta d'40'
+kb48
+    dta d'48'    
 bank1
-    dta d'64 KB Atari'
+    dta d'64'
 bank4
     dta d'128 KB Atari'
 bank15
@@ -192,6 +217,16 @@ osver64
     dta d'QMEG+OS 4.04'
 osver253
     dta d'QMEG+OS RC01'
+osver800_1
+    dta d'400/800 NTSC'
+osver800_2
+    dta d'400/800 Rev.A NTSC'
+osver800_3
+    dta d'400/800 Rev.A PAL'
+osver800_4
+    dta d'400/800 Rev.B NTSC'
+osver800_5
+    dta d'400/800 Rev.B PAL'    
 osother
     dta d'Unknown !!!!'
 
@@ -209,23 +244,35 @@ tvstandard1
     dta d'NTSC'
 tvstandard2
     dta d'PAL '
+tvtype2
+    dta d'GTIA='
 sound1
     dta d'Mono  '
 sound2
     dta d'Stereo'
 bas1200xl
     dta d'  Basic Cartridge : '
+optionbank
+    dta d'                       '
 
 ; Program start
 begin
+    jsr @GTIA
     mva #0 AUDCTL
     mwa #dlist SDLSTL
     mwa #dli VDSLST
     mva #>font CHBAS
     mva #$d COLOR1
     mva #0 A1200
- 
-; Delect the CPU
+    mva #0 A800
+
+; Detect the TIA
+    lda @TIA_DETECT
+    cmp #1
+    bne detect_cpu
+    string tvtype2,tvtype,4
+   
+; Detect the CPU
 detect_cpu
     lda #$99
     clc
@@ -245,15 +292,49 @@ cpu_c02
 cpu_c816
     string cpu3,processordetect,10
 
-; Detect the RAM
+
+; Detect the RAM 16k
 ram16
     mva #$a A600KB
     lda A600KB
     cmp #$a
     bne d600_16k
+ram24
+    mva #$b A600KB+$2000
+    lda A600KB+$2000
+    cmp #$b
+    bne d600_24k
+ram32
+    mva #$c A600KB+$4000
+    lda A600KB+$4000
+    cmp #$c
+    bne d600_32k
+ram40
+    mva #$d A600KB+$6000
+    lda A600KB+$6000
+    cmp #$d
+    bne d600_40k
+
+; Detects more than 48k
+    lda $cc00
+    cmp #$0
+    bne d800_48k
     jmp ram_detect
+
 d600_16k
-    string bank0,memorydetect,10
+    string kb16,memorydetect,1
+    jmp end_bank
+d600_24k
+    string kb24,memorydetect,1
+    jmp end_bank
+d600_32k
+    string kb32,memorydetect,1
+    jmp end_bank 
+d600_40k
+    string kb40,memorydetect,1
+    jmp end_bank       
+d800_48k
+    string kb48,memorydetect,1
     jmp end_bank
 
 ram_detect
@@ -275,7 +356,7 @@ ram_detect
     beq ram_128
     jmp end_bank
 ram_0
-    string bank1,memorydetect,10
+    string bank1,memorydetect,1
     jmp end_bank
 ram_4
     string bank4,memorydetect,11
@@ -296,8 +377,50 @@ ram_128
     string bank128,memorydetect,6
 end_bank 
 
-; Detect the OS ROM
+; Detect the OS ROM 400/800
+os_800
+    lda OSROM2
+    cmp #255
+    bne os_800other1
+    jmp os_800_1
+os_800other1
+    cmp #221
+    bne os_800other2
+    jmp os_800_2
+os_800other2
+    cmp #214
+    bne os_800other3
+    jmp os_800_3
+os_800other3
+    cmp #243
+    bne os_800other4
+    jmp os_800_4
+os_800other4
+    cmp #34
+    bne os_800other5
+    jmp os_800_5
+os_800other5
+    jmp os_detect
+
+os_800_1
+    string osver800_1,osdetect,11
+    jmp os_end
+os_800_2
+    string osver800_2,osdetect,17
+    jmp os_end
+os_800_3
+    string osver800_3,osdetect,16
+    jmp os_end
+os_800_4
+    string osver800_4,osdetect,17
+    jmp os_end
+os_800_5
+    string osver800_5,osdetect,16
+    jmp os_end
+
+; Detect the OS ROM XL/XE/XEGS
 os_detect
+    mva #1 A800
     lda OSROM
     cmp #1
     bne os_other1
@@ -397,7 +520,7 @@ bas_c
 bas_end
 
 ; Detect the tv standard
-    lda PALNTS
+    lda PAL ;PALNTS
     cmp #1
     bne tvs
     mva #$90 COLOR4
@@ -428,25 +551,57 @@ soundstereo
     string sound2,sounddetect,5
 sound_end
 
+; Change text
+options
+    lda A800
+    cmp #0
+    bne keyconsole
+    string options2,options1,39
+;    string osother,memorydetect,11
 
 ; Key console
 keyconsole
     mva #0 ATRACT
-    lda CONSOL
-    cmp #6
+    ldy CONSOL
+    lda A800
+    cmp #1
+    bne onlystart   
+    cpy #6
     beq reboot
-    cmp #5
+    cpy #5
     beq selftest
+    cpy #3
+    beq dos
+onlystart
+    cpy #6
+    beq reboot
     jmp joystick1
 
 ; Reboot
 reboot
+    lda CONSOL
+    cmp #6
+    beq reboot
     jmp COLDSV
 
 ; Selt Test
 selftest
+    lda CONSOL
+    cmp #5
+    beq selftest
     mva #$e0 CHBAS
     jmp SELFTST
+
+; DOS 2.x
+dos
+    lda CONSOL
+    cmp #3
+    beq dos
+    mva #$e0 CHBAS
+    lda #$ff
+    sta BASICF
+    sta PORTB
+    jmp ($a)
 
 joystick1
 	lda STICK0
@@ -635,9 +790,10 @@ copybytes
 
     icl 'antic_detect.asm'
     icl 'mem_detect.asm'
+    icl 'gtia_detect.asm'
 
 ; Memory area for the font
-   org $3000
+    org $3000
 font
     ins 'letter.fnt'
 
