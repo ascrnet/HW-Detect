@@ -184,7 +184,9 @@ kb32
 kb40
     dta d'40'
 kb48
-    dta d'48'    
+    dta d'48'
+kb52
+    dta d'52'
 bank1
     dta d'64'
 bank4
@@ -281,17 +283,23 @@ detect_cpu
     cld
     beq cpu_cmos
     string cpu1,processordetect,14
-    jmp ram16
+    jmp offrom
 cpu_cmos
     lda #0
     rep #%00000010	
     bne cpu_c816
 cpu_c02
     string cpu2,processordetect,9
-    jmp ram16
+    jmp offrom
 cpu_c816
     string cpu3,processordetect,10
 
+; Off ROM XL/XE
+offrom
+    lda #0
+    sta NMIEN
+    lda #$fe
+    sta PORTB
 
 ; Detect the RAM 16k
 ram16
@@ -314,11 +322,16 @@ ram40
     lda A600KB+$6000
     cmp #$d
     bne d600_40k
-
-; Detects more than 48k
-    lda $cc00
-    cmp #$0
-    bne d800_48k
+ram48
+    mva #$e A600KB+$8000
+    lda A600KB+$8000
+    cmp #$e
+    bne d600_48k
+ram52
+    mva #$d A600KB+$A000
+    lda A600KB+$A000
+    cmp #$d
+    bne d600_52k
     jmp ram_detect
 
 d600_16k
@@ -333,8 +346,11 @@ d600_32k
 d600_40k
     string kb40,memorydetect,1
     jmp end_bank       
-d800_48k
+d600_48k
     string kb48,memorydetect,1
+    jmp end_bank
+d600_52k
+    string kb52,memorydetect,1
     jmp end_bank
 
 ram_detect
