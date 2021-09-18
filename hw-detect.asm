@@ -52,6 +52,7 @@ A1200  = $652
 A600KB = $4000
 A800KB = $A000
 A800  = $80
+OSXL  = $81
 
     org $2000
     opt c+
@@ -105,11 +106,11 @@ subtitle
 author
 :7  .by $41
     .by $42
-    dta d'by AsCrNet, 2020'*
+    dta d'by AsCrNet, 2021'*
     .by $43
     .by $41
     .by $42
-    dta d'V1.6'*
+    dta d'V1.7'*
     .by $43
 :8  .by $41
 
@@ -143,11 +144,11 @@ sounddetect
     dta d'                    '
 
 tjoy1
-    dta d'   ',$46,d'           ',$4b,d'  Test  '*,$4c,d'     ',$46,d'            '       
+    dta d'               ',$4b,d'  Test  '*,$4c,d'                   '       
 tjoy2
-    dta d'  ',$48,$4a,$49,d' 1 2 3    ',$4b,d'Joystick'*,$4c,d'    ',$48,$4a,$49,d' 1 2 3   '
+    dta d'   ',$4a,d'  1 2 3    ',$4b,d'Joystick'*,$4c,d'     ',$4a,d'  1 2 3   '
 tjoy3
-    dta d'   ',$47,d'           ',$4b,d'  1 & 2 '*,$4c,d'     ',$47,d'            '
+    dta d'               ',$4b,d'  1 & 2 '*,$4c,d'                   '
 
 options1
     dta d'Start'*
@@ -198,9 +199,9 @@ bank16
 bank32
     dta d'576 KB Rambo/Compy'
 bank64
-    dta d'1088 KB'
+    dta d'1088 KB    '
 bank128
-    dta d'2112 KB'
+    dta d'2112 KB    '
 osver1
     dta d'XL OS Rev.1'
 osver2
@@ -259,21 +260,29 @@ optionbank
 
 ; Program start
 begin
-    jsr @GTIA
+
     mva #0 AUDCTL
+    mva #59 AUDF1
+    mva #71 AUDF2
+    mva #84 AUDF3
+    mva #107 AUDF4
+
+    jsr @GTIA
+
     mwa #dlist SDLSTL
     mwa #dli VDSLST
     mva #>font CHBAS
     mva #$d COLOR1
     mva #0 A1200
     mva #0 A800
+    mva OSROM OSXL
 
 ; Detect the TIA
     lda @TIA_DETECT
     cmp #1
     bne detect_cpu
     string tvtype2,tvtype,4
-   
+
 ; Detect the CPU
 detect_cpu
     lda #$99
@@ -355,7 +364,7 @@ d600_52k
 
 ram_detect
     jsr @MEM_DETECT
-	sta banks
+    sta banks
     cpw banks #0
     beq ram_0
     cpw banks #4
@@ -387,11 +396,18 @@ ram_32
     string bank32,memorydetect,17
     jmp end_bank
 ram_64
-    string bank64,memorydetect,6
+    string bank64,memorydetect,10
     jmp end_bank
 ram_128
-    string bank128,memorydetect,6
+    string bank128,memorydetect,10
 end_bank 
+
+; Detect the OS-B or XL
+osb_detect
+    lda $fcd8
+    cmp #$a2
+    beq os_800
+    jmp os_detect
 
 ; Detect the OS ROM 400/800
 os_800
@@ -437,7 +453,7 @@ os_800_5
 ; Detect the OS ROM XL/XE/XEGS
 os_detect
     mva #1 A800
-    lda OSROM
+    lda OSXL
     cmp #1
     bne os_other1
     jmp os_v1
@@ -506,7 +522,7 @@ os_v253
     string osver253,osdetect,11
 os_end
 
-;Detect 1200XL
+; Detect 1200XL
     lda A1200
     cmp #0
     beq bas_rom
@@ -573,10 +589,10 @@ options
     cmp #0
     bne keyconsole
     string options2,options1,39
-;    string osother,memorydetect,11
 
 ; Key console
 keyconsole
+    mva #59 AUDF1
     mva #0 ATRACT
     ldy CONSOL
     lda A800
@@ -591,7 +607,7 @@ keyconsole
 onlystart
     cpy #6
     beq reboot
-    jmp joystick1
+    jmp joystick
 
 ; Reboot
 reboot
@@ -619,102 +635,61 @@ dos
     sta PORTB
     jmp ($a)
 
-joystick1
-	lda STICK0
-	pha
-p1_right
-	pla
-	pha
-	and #8
-	bne p1_left
-	anima $49,tjoy2+4,AUDC1
-p1_left
-	pla
-	pha
-	and #4
-	bne p1_down
-	anima $48,tjoy2+2,AUDC1
-p1_down
-	pla
-	pha
-	and #2
-	bne p1_up
-	anima $47,tjoy3+3,AUDC1
-p1_up
-	pla
-	pha
-	and #1
-	bne p1_b1
-	anima $46,tjoy1+3,AUDC1
-p1_b1
-	lda STRIG0
-	bne p1_j2b
-	anima $11,tjoy2+6,AUDC2
-p1_j2b
+joystick
+    lda STICK0
+    drawDirection #%0101, #%0000, #$4f, tjoy1+2  ; up + left
+    drawDirection #%1101, #%1100, #$46, tjoy1+3  ; up
+    drawDirection #%1001, #%0000, #$50, tjoy1+4  ; up + right
+    drawDirection #%0111, #%0011, #$48, tjoy2+2	 ; left
+    drawDirection #%1011, #%0011, #$49, tjoy2+4  ; right
+    drawDirection #%0110, #%0000, #$51, tjoy3+2  ; down + left
+    drawDirection #%1110, #%1100, #$47, tjoy3+3  ; down
+    drawDirection #%1010, #%0000, #$52, tjoy3+4  ; down + right
+    setVolume prev_s1, vol_s1
+
+    lda STICK1
+    drawDirection #%0101, #%0000, #$4f, tjoy1+29  ; up + left
+    drawDirection #%1101, #%1100, #$46, tjoy1+30  ; up
+    drawDirection #%1001, #%0000, #$50, tjoy1+31  ; up + right
+    drawDirection #%0111, #%0011, #$48, tjoy2+29  ; left
+    drawDirection #%1011, #%0011, #$49, tjoy2+31  ; right
+    drawDirection #%0110, #%0000, #$51, tjoy3+29  ; down + left
+    drawDirection #%1110, #%1100, #$47, tjoy3+30  ; down
+    drawDirection #%1010, #%0000, #$52, tjoy3+31  ; down + right
+    setVolume prev_s2, vol_s2
+
+    sound vol_s1, vol_s2, AUDC1
+
+; Buttons
+    lda STRIG0
+    readButton #$01, #"1", tjoy2+6, vol_a1
+    lda STRIG1
+    readButton #$10, #"1", tjoy2+33, vol_a2
+    sound vol_a1, vol_a2, AUDC2
+
     lda PADDL0
-    and PADDL1
     cmp #$e4
-    bne p1_b2
-    jmp joystick2
-p1_b2
-	lda PADDL0
-	cmp #$e4
-	bne p1_b3
-    anima $12,tjoy2+8,AUDC2
-p1_b3
-	lda PADDL1
-	cmp #$e4
-	bne joystick2
-    anima $13,tjoy2+10,AUDC2
-;
-joystick2
-	lda STICK1
-	pha
-p2_right
-	pla
-	pha
-	and #8
-	bne p2_left
-	anima $49,tjoy2+31,AUDC3
-p2_left
-	pla
-	pha
-	and #4
-	bne p2_down
-	anima $48,tjoy2+29,AUDC3
-p2_down
-	pla
-	pha
-	and #2
-	bne p2_up
-	anima $47,tjoy3+30,AUDC3	
-p2_up
-	pla
-	pha
-	and #1
-	bne p2_b1
-	anima $46,tjoy1+30,AUDC3
-p2_b1
-	lda STRIG1
-	bne p2_j2b
-	anima $11,tjoy2+33,AUDC4
-p2_j2b
+    readButton #$02, #"2", tjoy2+8, vol_b1
     lda PADDL2
-    and PADDL3
     cmp #$e4
-    bne p2_b2
-    jmp end_joy
-p2_b2
-	lda PADDL2
-	cmp #$e4
-	bne p2_b3
-    anima $12,tjoy2+35,AUDC4
-p2_b3
-	lda PADDL3
-	cmp #$e4
-	bne end_joy
-    anima $13,tjoy2+37,AUDC4
-end_joy
+    readButton #$20, #"2", tjoy2+35, vol_b2
+    sound vol_b1, vol_b2, AUDC3
+
+    lda PADDL1
+    cmp #$e4
+    readButton #$04, #"3", tjoy2+10, vol_c1
+    lda PADDL3
+    cmp #$e4
+    readButton #$40, #"3", tjoy2+37, vol_c2
+    sound vol_c1, vol_c2, AUDC4
+
+    ldx #0
+    ldy #3
+delay
+    dex
+    bne delay
+    dey
+    bne delay
     jmp keyconsole
 
 ; Dli
@@ -740,9 +715,8 @@ loop_dli
     pla
     rti
 
-
 ; Stereo pokey detection routine
-stereo	
+stereo
     sei
     inc $d40e
     lda #$03
@@ -754,13 +728,13 @@ stereo
     stx $d21e
     ldx:rne $d40b
     stx $d219
-loop	
+loop
     ldx $d40b
     bmi stop
     lda #$01
     bit $d20e
     bne loop
-stop	
+stop
     lda $10
     sta $d20e
     dec $d40e
@@ -770,7 +744,7 @@ stop
 
     run begin
 
-banks	
+banks
     dta a(0)
 
 ; Macro to copy texts on screen
@@ -783,26 +757,113 @@ copybytes
     bpl copybytes
 .endm
 
-; Macro que anima el caracter 
-.macro anima
-	mva #:1-128 :2
-	mva #$9b :3
-    pause 3
-	mva #0 :3
-	mva #:1 :2
-.endm
-
 ; Macro pause CPU
 .macro pause
-	ift :1 == 0
-	lda:cmp:req 20
-	els
-	lda 20
-	add #:1
-	cmp 20
-	bne *-2
-	eif
+    ift :1 == 0
+    lda:cmp:req 20
+    els
+    lda 20
+    add #:1
+    cmp 20
+    bne *-2
+    eif
 .endm
+
+.macro drawDirection mask, value, char, pos
+    pha
+    and :mask
+    cmp :value
+    bne clear
+    lda :char
+    bne draw
+clear
+    lda #0
+draw
+    sta :pos
+    pla
+.endm
+
+.macro setVolume prev, vol
+    cmp :prev
+    beq unchanged
+    sta :prev
+    cmp #$f
+    beq not_held
+    lda #$8f
+    bne setvol
+not_held
+    lda #0
+    beq setvol
+unchanged
+    lda :vol
+    beq skip
+    sec
+    sbc #1
+setvol
+    sta :vol
+skip
+.endm
+
+.macro sound v1, v2, channel
+    lda :v1
+    cmp :v2
+    scs:lda :v2
+    lsr
+    lsr
+    lsr
+    lsr
+    seq:ora #$a0
+    sta :channel
+.endm
+
+.macro readButton mask, char, pos, vol
+    beq pressed
+    lda :exists
+    ora :mask
+    sta :exists
+    mva :char+128 :pos
+    lda #0
+    beq setvol
+pressed
+    lda :exists
+    and :mask
+    beq next
+    mva :char :pos
+    lda :vol
+    bne decay
+    lda #$8f
+    bne setvol
+decay
+    cmp #$f
+    bcc next
+    sbc #1
+setvol
+    sta :vol
+next
+.endm
+
+exists
+    .byte 0
+vol_s1
+    .byte 0
+vol_s2
+    .byte 0
+prev_s1
+    .byte 0
+prev_s2
+    .byte 0
+vol_a1
+    .byte 0
+vol_a2
+    .byte 0
+vol_b1
+    .byte 0
+vol_b2
+    .byte 0
+vol_c1
+    .byte 0
+vol_c2
+    .byte 0
 
     icl 'antic_detect.asm'
     icl 'mem_detect.asm'
@@ -822,5 +883,3 @@ font
 ;    .word begin
 ;    .by 0,4
 ;    .word init
-
-

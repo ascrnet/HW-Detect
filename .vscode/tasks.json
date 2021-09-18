@@ -19,7 +19,7 @@
             "label": "Run Altirra",
             "type": "shell",
             "command": "wine",
-            "args": [ "/opt/Altirra/Altirra64.exe","${fileBasenameNoExtension}.xex"],
+            "args": [ "/opt/altirra/Altirra64.exe","${fileBasenameNoExtension}.xex"],
             "problemMatcher": []
         }
 
