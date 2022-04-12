@@ -1,4 +1,4 @@
-; HW-Detect Version 400/800/XL/XE/XEGS
+; HW-Detect Version PBI TESTER XE
 ;-------------------------------------
 
 RTCLOK = $14
@@ -50,15 +50,12 @@ OSROM2 = $fff8
 
 @TAB_MEM_BANKS = $600
 @ANTIC_DETECT = $650
-A1200  = $652
 @TIA_DETECT = $653
-A600KB = $4000
-A800  = $80
 OSXL  = $81
 
     org $2000
     opt c+
-;   opt f+h-
+    opt f+h-
 
 dlist
     .by $70
@@ -104,15 +101,15 @@ dlist
 title
     dta d' #$ HARDWARE-DETECT '
 subtitle
-    dta d' 400/800/XL/XE/XEGS '
+    dta d'    PBI TESTER XE    '
 author
 :7  .by $41
     .by $42
-    dta d'by AsCrNet, 2021'*
+    dta d'by AsCrNet, 2022'*
     .by $43
     .by $41
     .by $42
-    dta d'V1.7'*
+    dta d'V1.0'*
     .by $43
 :8  .by $41
 
@@ -153,24 +150,13 @@ tjoy3
     dta d'               ',$4b,d'  1 & 2 '*,$4c,d'                   '
 
 options1
-    dta d'Start'*
+    dta d'  '
+    dta d' Start '*
     .by $4d
-    dta d'Reboot '
-    dta d'Select'*
+    dta d'Reboot    '
+    dta d' Select '*
     .by $4d
-    dta d'Self-TEST '
-    dta d'OPTION'*
-    .by $4d
-    dta d'Dos'
-
-options2
-    dta d'             '
-    .by $44
-    dta d'Start'*
-    .by $45
-    dta d'  Reboot'
-    dta d'            '
-
+    dta d'Self-TEST  '
 
 cpu1
     dta d'NMOS 6502/6502C'
@@ -222,16 +208,6 @@ osver64
     dta d'QMEG+OS 4.04'
 osver253
     dta d'QMEG+OS RC01'
-osver800_1
-    dta d'400/800 NTSC'
-osver800_2
-    dta d'400/800 Rev.A NTSC'
-osver800_3
-    dta d'400/800 Rev.A PAL'
-osver800_4
-    dta d'400/800 Rev.B NTSC'
-osver800_5
-    dta d'400/800 Rev.B PAL'    
 osother
     dta d'Unknown !!!!'
 
@@ -242,9 +218,7 @@ basic_b
 basic_c
     dta d'Atari Basic Rev.C'
 basic_other
-    dta d'Unknown !!!!'
-basic_a1200
-    dta d'Without cartridge'
+    dta d'Cannot Read !!!'
 tvstandard1
     dta d'NTSC'
 tvstandard2
@@ -275,8 +249,6 @@ begin
     mwa #dli VDSLST
     mva #>font CHBAS
     mva #$d COLOR1
-    mva #0 A1200
-    mva #0 A800
     mva OSROM OSXL
 
 ; Detect the TIA
@@ -307,62 +279,12 @@ cpu_c816
 
 ; Off ROM XL/XE
 offrom
-    lda #0
-    sta NMIEN
-    lda #$fe
-    sta PORTB
-
-; Detect the RAM 16k
-ram16
-    mva #$a A600KB
-    lda A600KB
-    cmp #$a
-    bne d600_16k
-ram24
-    mva #$b A600KB+$2000
-    lda A600KB+$2000
-    cmp #$b
-    bne d600_24k
-ram32
-    mva #$c A600KB+$4000
-    lda A600KB+$4000
-    cmp #$c
-    bne d600_32k
-ram40
-    mva #$d A600KB+$6000
-    lda A600KB+$6000
-    cmp #$d
-    bne d600_40k
-ram48
-    mva #$e A600KB+$8000
-    lda A600KB+$8000
-    cmp #$e
-    bne d600_48k
-ram52
-    mva #$d A600KB+$A000
-    lda A600KB+$A000
-    cmp #$d
-    bne d600_52k
-    jmp ram_detect
-
-d600_16k
-    string kb16,memorydetect,1
-    jmp end_bank
-d600_24k
-    string kb24,memorydetect,1
-    jmp end_bank
-d600_32k
-    string kb32,memorydetect,1
-    jmp end_bank 
-d600_40k
-    string kb40,memorydetect,1
-    jmp end_bank       
-d600_48k
-    string kb48,memorydetect,1
-    jmp end_bank
-d600_52k
-    string kb52,memorydetect,1
-    jmp end_bank
+;    lda #0
+;    sta NMIEN
+;   lda #$fe
+;    sta PORTB
+;    lda #0
+ ;   sta BASICF
 
 ram_detect
     jsr @MEM_DETECT
@@ -404,57 +326,8 @@ ram_128
     string bank128,memorydetect,10
 end_bank 
 
-; Detect the OS-B or XL
-osb_detect
-    lda $fcd8
-    cmp #$a2
-    beq os_800
-    jmp os_detect
-
-; Detect the OS ROM 400/800
-os_800
-    lda OSROM2
-    cmp #255
-    bne os_800other1
-    jmp os_800_1
-os_800other1
-    cmp #221
-    bne os_800other2
-    jmp os_800_2
-os_800other2
-    cmp #214
-    bne os_800other3
-    jmp os_800_3
-os_800other3
-    cmp #243
-    bne os_800other4
-    jmp os_800_4
-os_800other4
-    cmp #34
-    bne os_800other5
-    jmp os_800_5
-os_800other5
-    jmp os_detect
-
-os_800_1
-    string osver800_1,osdetect,11
-    jmp os_end
-os_800_2
-    string osver800_2,osdetect,17
-    jmp os_end
-os_800_3
-    string osver800_3,osdetect,16
-    jmp os_end
-os_800_4
-    string osver800_4,osdetect,17
-    jmp os_end
-os_800_5
-    string osver800_5,osdetect,16
-    jmp os_end
-
 ; Detect the OS ROM XL/XE/XEGS
 os_detect
-    mva #1 A800
     lda OSXL
     cmp #1
     bne os_other1
@@ -469,16 +342,8 @@ os_other2
     jmp os_v3
 os_other3
     cmp #4
-    bne os_other4
-    jmp os_v4
-os_other4
-    cmp #10
-    bne os_other5
-    jmp os_v10
-os_other5
-    cmp #11
     bne os_other6
-    jmp os_v11
+    jmp os_v4
 os_other6
     cmp #59
     bne os_other7
@@ -506,14 +371,6 @@ os_v3
 os_v4
     string osver4,osdetect,12
     jmp os_end  
-os_v10
-    string osver10,osdetect,14
-    mva #1 A1200
-    jmp os_end
-os_v11
-    string osver11,osdetect,14
-    mva #1 A1200
-    jmp os_end
 os_v59
     string osver59,osdetect,14
     jmp os_end
@@ -524,16 +381,8 @@ os_v253
     string osver253,osdetect,11
 os_end
 
-; Detect 1200XL
-    lda A1200
-    cmp #0
-    beq bas_rom
-    string bas1200xl,basversion,19
-
 ; Detect the Basic ROM
 bas_rom
-    lda #$fd
-    sta PORTB
     lda BASROM
     cmp #162
     beq bas_a
@@ -541,7 +390,7 @@ bas_rom
     beq bas_b
     cmp #234
     beq bas_c
-    string basic_other,basdetect,11
+    string basic_other,basdetect,14
     jmp bas_end
 bas_a
     string basic_a,basdetect,16
@@ -585,30 +434,15 @@ soundstereo
     string sound2,sounddetect,5
 sound_end
 
-; Change text
-options
-    lda A800
-    cmp #0
-    bne keyconsole
-    string options2,options1,39
-
 ; Key console
 keyconsole
     mva #59 AUDF1
     mva #0 ATRACT
     ldy CONSOL
-    lda A800
-    cmp #1
-    bne onlystart   
     cpy #6
     beq reboot
     cpy #5
     beq selftest
-    cpy #3
-    beq dos
-onlystart
-    cpy #6
-    beq reboot
     jmp joystick
 
 ; Reboot
@@ -625,17 +459,6 @@ selftest
     beq selftest
     mva #$e0 CHBAS
     jmp SELFTST
-
-; DOS 2.x
-dos
-    lda CONSOL
-    cmp #3
-    beq dos
-    mva #$e0 CHBAS
-    lda #$ff
-    sta BASICF
-    sta PORTB
-    jmp ($a)
 
 joystick
     lda STICK0
@@ -743,8 +566,6 @@ stop
     cli
     txa
     rts
-
-    run begin
 
 banks
     dta a(0)
@@ -875,13 +696,3 @@ vol_c2
     org $3000
 font
     ins 'letter.fnt'
-
-; ----Cart--------
-;init
-;    rts 
-;
-;   org $BFFA
-;		    
-;    .word begin
-;    .by 0,4
-;    .word init

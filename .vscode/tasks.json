@@ -13,7 +13,7 @@
             "label": "Run Atari800",
             "type": "shell",
             "command": "atari800",
-            "args": [ "${fileBasenameNoExtension}.xex"],
+            "args": [ "${fileBasenameNoExtension}.rom"],
             "problemMatcher": []
         },{
             "label": "Run Altirra",
@@ -21,7 +21,14 @@
             "command": "wine",
             "args": [ "/opt/altirra/Altirra64.exe","${fileBasenameNoExtension}.xex"],
             "problemMatcher": []
+        },{
+            "label": "Compiler Mads Rom",
+            "type": "shell",
+            "command": "mads",
+            "args": [ "${file}","-o:${fileBasenameNoExtension}.rom","-v","-l:${fileBasenameNoExtension}.lst"],
+            "problemMatcher": []
         }
+
 
     ]
 }
